@@ -1,0 +1,148 @@
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class FindFiles {
+
+    private static String fileToFind;
+    private List<String> list = new ArrayList<String>();
+
+    public String getFileToFind() {
+        return fileToFind;
+    }
+
+    public void setFileToFind(String fileToFind) {
+        this.fileToFind = fileToFind;
+    }
+
+    public List<String> printList() {
+        return list;
+    }
+
+    public static void printHelp() {
+        System.out.println("Usage: FindFiles filetofind [-option arg]\n"
+                + "-help                     :: print out a help page and exit the program.\n"
+                + "-r                        :: execute the command recursively in subfiles.\n"
+                + "-reg [exp]                :: find files using [filietofind] argument as a regular expression.\n"
+                + "-dir [directory]          :: find the files the specified directory [directory]. Default directory is the calling directory.\n"
+                + "-ext [ext1,ext2,...]      :: find the files matching [filetofind] and with the given extensions [ext1, ext2,...]");
+    }
+
+    public static void main(String[] args) {
+        int length = args.length;
+        fileToFind = args[0];
+        String pattern = "";
+        Boolean checkSubdirectory = false;
+        String directory = "";
+
+        if(length == 0 || fileToFind.charAt(0) =='-') {
+            printHelp();
+            return;
+        }
+        if(length == 1) {
+            File file = new File("fileToFind");
+            String absolute = file.getAbsolutePath();
+            System.out.println(absolute);
+            return;
+        }
+        //process all the options
+        for (int i = 1; i < length;  i++) {
+            System.out.println(args[i]);
+            if (args[i].equals("-help")) {
+                printHelp();
+                return;
+            }
+            else if(args[i].equals("-reg")) {
+                if (pattern.length() != 0) {
+                    pattern += "|(" + fileToFind + ")";
+                }
+                else {
+                    pattern = fileToFind;
+                }
+            }
+            else if (args[i].equals("-r")) {
+                checkSubdirectory = true;
+            }
+            else if (args[i].equals("-dir")) {
+                if(args[i+1].charAt(0) != '-' && i < length - 1) {
+                    directory = args[i+1];
+                    i++;
+                }
+                else {
+                    System.out.println("No parameter provided");
+                }
+            }
+            else if (args[i].equals("-ext")) {
+                String extensions = args[i+1];
+                if(extensions.charAt(1) != '-' && i < length - 1) {
+                    i++;
+                    if(pattern.length() != 0) {
+                        pattern += "|(" + extensions + ")";
+                    }
+                    else {
+                        pattern = extensions;
+                    }
+
+                }
+                else {
+                    System.out.println("No parameter provided");
+                }
+            }
+            else {
+                System.out.println("Invalid Command");
+                printHelp();
+                return;
+            }
+        }
+
+        if(pattern != "") {
+            // replace all . and * with \\. and \\*
+            pattern.replace(".", "\\.");
+            pattern.replace("*", "\\*");
+        }
+        FindFiles fileSearch = new FindFiles();
+        if(directory.length() == 0) { // look in the current directory
+            directory = System.getProperty("user.dir");
+        }
+        fileSearch.searchDirectory(new File(directory), fileToFind, checkSubdirectory, pattern);
+        int count = fileSearch.printList().size();
+        if(count ==0){
+            System.out.println("\nNo result found!");
+        }else{
+            for (String matched : fileSearch.printList()){
+                System.out.println(matched);
+            }
+        }
+
+    } //main
+
+    public void searchDirectory(File directory, String fileToFind, boolean checkSubdirectory, String pattern) {
+        setFileToFind(fileToFind);
+        if (directory.isDirectory()) {
+            search(directory, checkSubdirectory, pattern);
+        } else {
+            System.out.println(directory.getAbsoluteFile() + " is not a directory!");
+        }
+
+    }
+
+    private void search(File file, Boolean checkSubdirectory, String pattern) {
+        if (file.isDirectory()) {
+            for (File temp : file.listFiles()) {
+                if (temp.isDirectory() && checkSubdirectory == true) {
+                    search(temp, true, pattern);
+                } else {
+                    if (pattern.equals("") && getFileToFind().equals(temp.getName())) {
+                        printList().add(temp.getAbsoluteFile().toString());
+                    }
+                    else if (!pattern.equals("") && getFileToFind().matches(pattern)) {
+
+                        printList().add(temp.getAbsoluteFile().toString());
+                    }
+                }
+            }
+        }
+    }
+}
